@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+    "pointer",
+    "basic_class",
+    "incrementor"
+]
