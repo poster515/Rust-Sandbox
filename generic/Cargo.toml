@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "generic",
+    "generic_class"
+]
