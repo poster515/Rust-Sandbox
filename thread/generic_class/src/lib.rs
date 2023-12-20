@@ -1,6 +1,5 @@
 
 
-
 use num_traits::Num;
 use num_traits::identities::zero;
 use num_traits::identities::one;

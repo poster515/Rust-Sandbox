@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "thread",
+    "generic_class"
+]
