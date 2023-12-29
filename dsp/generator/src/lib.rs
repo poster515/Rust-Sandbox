@@ -37,7 +37,7 @@ pub fn generate_square_wave_data<T: Num + std::ops::Neg<Output = T> + std::fmt::
 	}
 }
 
-pub fn generate_sine_wave_data(vec: &mut Vec<f64>
+pub fn generate_sine_wave_data<T: Num + std::ops::Neg<Output = T> + std::fmt::Display + Copy>(vec: &mut Vec<T>
 		, buffer_len: usize
 		, clock: Arc<Mutex<i8>>
 		, period: i64){

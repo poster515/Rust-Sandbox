@@ -3,5 +3,7 @@ resolver = "2"
 
 members = [
     "dsp",
-    "generator"
+    "generator",
+    "bb_processor",
+    "processors"
 ]
