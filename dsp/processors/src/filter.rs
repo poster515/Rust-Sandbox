@@ -2,8 +2,7 @@
 use bb_processor::BasicBufferProcessor;
 
 pub struct FFT {
-    base_processor: BasicBufferProcessor;
-
+    base_processor: BasicBufferProcessor,
 }
 
 

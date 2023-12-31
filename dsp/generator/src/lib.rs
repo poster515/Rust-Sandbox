@@ -1,20 +1,21 @@
 
+use num_complex::Complex;
 
-use num_traits::Num;
-use num::cast::AsPrimitive;
-use num_traits::identities::one;
+// use num_traits::Num;
+// use num::cast::AsPrimitive;
+// use num_traits::identities::one;
 
 use std::f64::consts::PI;
 
 use std::sync::{Arc, Mutex};
 
-pub fn generate_square_wave_data<T: Num + std::ops::Neg<Output = T> + std::fmt::Display + Copy>(vec: &mut Vec<T>
+pub fn generate_square_wave_data(vec: &mut Vec<Complex<f64>>
 		, buffer_len: usize
 		, clock: Arc<Mutex<i8>>
 		, period: i64){
 
 	// get the current clock value
-	let mut val: T;
+	let mut val: Complex<f64>;
 	let value_guard = clock.lock().unwrap();
 	let mut temp_clock_value: i8 = *value_guard;
 	drop(value_guard);
@@ -25,9 +26,9 @@ pub fn generate_square_wave_data<T: Num + std::ops::Neg<Output = T> + std::fmt::
 		}
 
 		if (i as i64 % period) < (period/2) { 
-			val = one::<T>();
+			val = Complex::new(1.0, 0.0);
 		} else {
-			val = -one::<T>();
+			val = Complex::new(-1.0, 0.0);
 		}
 		(*vec).push(val);
 
@@ -37,13 +38,13 @@ pub fn generate_square_wave_data<T: Num + std::ops::Neg<Output = T> + std::fmt::
 	}
 }
 
-pub fn generate_sine_wave_data<T: Num + std::ops::Neg<Output = T> + std::fmt::Display + Copy>(vec: &mut Vec<T>
+pub fn generate_sine_wave_data(vec: &mut Vec<Complex<f64>>
 		, buffer_len: usize
 		, clock: Arc<Mutex<i8>>
 		, period: i64){
 
 	// get the current clock value
-	let mut val: f64;
+	let mut val: Complex<f64>;
 	let value_guard = clock.lock().unwrap();
 	let mut temp_clock_value: i8 = *value_guard;
 	drop(value_guard);
@@ -52,8 +53,8 @@ pub fn generate_sine_wave_data<T: Num + std::ops::Neg<Output = T> + std::fmt::Di
 		while temp_clock_value == 0 {
 			temp_clock_value = *clock.lock().unwrap();
 		}
-		val = ((2.0 * PI * (i as f64 % period as f64)) / period as f64).sin();
-		// val = ((2.0 * PI * (i as f64 % period as f64)) / period as f64).sin().as_();
+		// val = ((2.0 * PI * (i as f64 % period as f64)) / period as f64).sin();
+		val = Complex::new(((2.0 * PI * (i as f64 % period as f64) / period as f64)).sin(), 0.0);
 		(*vec).push(val);
 
 		while temp_clock_value == 1 {
@@ -62,15 +63,13 @@ pub fn generate_sine_wave_data<T: Num + std::ops::Neg<Output = T> + std::fmt::Di
 	}
 }
 
-pub fn generate_triangle_wave_data<T: Num + std::ops::Neg<Output = T> + std::fmt::Display + Copy + 'static>(vec: &mut Vec<T>
+pub fn generate_triangle_wave_data(vec: &mut Vec<Complex<f64>>
 		, buffer_len: usize
 		, clock: Arc<Mutex<i8>>
-		, period: i64)
-		
-		where i64: AsPrimitive<T> {
+		, period: i64){
 
 	// get the current clock value
-	let mut val: T;
+	let mut val: Complex<f64>;
 	let value_guard = clock.lock().unwrap();
 	let mut temp_clock_value: i8 = *value_guard;
 	drop(value_guard);
@@ -80,9 +79,9 @@ pub fn generate_triangle_wave_data<T: Num + std::ops::Neg<Output = T> + std::fmt
 			temp_clock_value = *clock.lock().unwrap();
 		}
 		if (i as i64 % period) < (period/2){
-			val = ((4*(i as i64 % period))/period - 1).as_();
+			val = Complex::new(((4*(i as i64 % period))/period - 1) as f64, 0.0);
 		} else {
-			val = (3 - (4*(i as i64 % period))/period).as_();
+			val = Complex::new((3 - (4*(i as i64 % period))/period) as f64, 0.0);
 		}
 		(*vec).push(val);
 
@@ -92,15 +91,13 @@ pub fn generate_triangle_wave_data<T: Num + std::ops::Neg<Output = T> + std::fmt
 	}
 }
 
-pub fn generate_sawtooth_wave_data<T: Num + std::ops::Neg<Output = T> + std::fmt::Display + Copy + 'static>(vec: &mut Vec<T>
+pub fn generate_sawtooth_wave_data(vec: &mut Vec<Complex<f64>>
 		, buffer_len: usize
 		, clock: Arc<Mutex<i8>>
-		, period: i64)
-		
-		where i64: AsPrimitive<T> {
+		, period: i64){
 
 	// get the current clock value
-	let mut val: T;
+	let mut val: Complex<f64>;
 	let value_guard = clock.lock().unwrap();
 	let mut temp_clock_value: i8 = *value_guard;
 	drop(value_guard);
@@ -110,7 +107,7 @@ pub fn generate_sawtooth_wave_data<T: Num + std::ops::Neg<Output = T> + std::fmt
 			temp_clock_value = *clock.lock().unwrap();
 		}
 		
-		val = (((2 * (i as i64 % period)) / period) - 1).as_();
+		val = Complex::new((((2 * (i as i64 % period)) / period) - 1) as f64, 0.0);
 		(*vec).push(val);
 
 		while temp_clock_value == 1 {

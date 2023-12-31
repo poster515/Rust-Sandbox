@@ -1,14 +1,9 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod audio_generator;
+// mod fft;
+// mod filter;
+// mod ifft;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use audio_generator::*;
+// pub use fft::*;
+
