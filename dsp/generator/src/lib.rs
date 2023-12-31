@@ -1,15 +1,12 @@
 
 use num_complex::Complex;
-
-// use num_traits::Num;
-// use num::cast::AsPrimitive;
-// use num_traits::identities::one;
-
 use std::f64::consts::PI;
 
 use std::sync::{Arc, Mutex};
 
-pub fn generate_square_wave_data(vec: &mut Vec<Complex<f64>>
+type DspBuffer = Arc<Mutex<Vec<Complex<f64>>>>;
+
+pub fn generate_square_wave_data(vec: DspBuffer
 		, buffer_len: usize
 		, clock: Arc<Mutex<i8>>
 		, period: i64){
@@ -20,6 +17,7 @@ pub fn generate_square_wave_data(vec: &mut Vec<Complex<f64>>
 	let mut temp_clock_value: i8 = *value_guard;
 	drop(value_guard);
 
+	let v: &mut Vec<Complex<f64>> = &mut vec.lock().unwrap();
 	for i in 0..buffer_len {
 		while temp_clock_value == 0 {
 			temp_clock_value = *clock.lock().unwrap();
@@ -30,15 +28,19 @@ pub fn generate_square_wave_data(vec: &mut Vec<Complex<f64>>
 		} else {
 			val = Complex::new(-1.0, 0.0);
 		}
-		(*vec).push(val);
+
+		v.push(val);
 
 		while temp_clock_value == 1 {
 			temp_clock_value = *clock.lock().unwrap();
-		}		
+		}
+
 	}
+
+	println!("generate_square_wave_data done!!");
 }
 
-pub fn generate_sine_wave_data(vec: &mut Vec<Complex<f64>>
+pub fn generate_sine_wave_data(vec: DspBuffer
 		, buffer_len: usize
 		, clock: Arc<Mutex<i8>>
 		, period: i64){
@@ -48,6 +50,8 @@ pub fn generate_sine_wave_data(vec: &mut Vec<Complex<f64>>
 	let value_guard = clock.lock().unwrap();
 	let mut temp_clock_value: i8 = *value_guard;
 	drop(value_guard);
+
+	let v: &mut Vec<Complex<f64>> = &mut vec.lock().unwrap();
 
 	for i in 0..buffer_len {
 		while temp_clock_value == 0 {
@@ -55,15 +59,16 @@ pub fn generate_sine_wave_data(vec: &mut Vec<Complex<f64>>
 		}
 		// val = ((2.0 * PI * (i as f64 % period as f64)) / period as f64).sin();
 		val = Complex::new(((2.0 * PI * (i as f64 % period as f64) / period as f64)).sin(), 0.0);
-		(*vec).push(val);
+		v.push(val);
 
 		while temp_clock_value == 1 {
 			temp_clock_value = *clock.lock().unwrap();
 		}		
 	}
+	println!("generate_sine_wave_data done!!");
 }
 
-pub fn generate_triangle_wave_data(vec: &mut Vec<Complex<f64>>
+pub fn generate_triangle_wave_data(vec: DspBuffer
 		, buffer_len: usize
 		, clock: Arc<Mutex<i8>>
 		, period: i64){
@@ -73,6 +78,8 @@ pub fn generate_triangle_wave_data(vec: &mut Vec<Complex<f64>>
 	let value_guard = clock.lock().unwrap();
 	let mut temp_clock_value: i8 = *value_guard;
 	drop(value_guard);
+
+	let v: &mut Vec<Complex<f64>> = &mut vec.lock().unwrap();
 
 	for i in 0..buffer_len {
 		while temp_clock_value == 0 {
@@ -83,15 +90,16 @@ pub fn generate_triangle_wave_data(vec: &mut Vec<Complex<f64>>
 		} else {
 			val = Complex::new((3 - (4*(i as i64 % period))/period) as f64, 0.0);
 		}
-		(*vec).push(val);
+		v.push(val);
 
 		while temp_clock_value == 1 {
 			temp_clock_value = *clock.lock().unwrap();
 		}		
 	}
+	println!("generate_triangle_wave_data done!!");
 }
 
-pub fn generate_sawtooth_wave_data(vec: &mut Vec<Complex<f64>>
+pub fn generate_sawtooth_wave_data(vec: DspBuffer
 		, buffer_len: usize
 		, clock: Arc<Mutex<i8>>
 		, period: i64){
@@ -102,17 +110,20 @@ pub fn generate_sawtooth_wave_data(vec: &mut Vec<Complex<f64>>
 	let mut temp_clock_value: i8 = *value_guard;
 	drop(value_guard);
 
+	let v: &mut Vec<Complex<f64>> = &mut vec.lock().unwrap();
+
 	for i in 0..buffer_len {
 		while temp_clock_value == 0 {
 			temp_clock_value = *clock.lock().unwrap();
 		}
 		
 		val = Complex::new((((2 * (i as i64 % period)) / period) - 1) as f64, 0.0);
-		(*vec).push(val);
+		v.push(val);
 
 		while temp_clock_value == 1 {
 			temp_clock_value = *clock.lock().unwrap();
 		}		
 	}
+	println!("generate_sawtooth_wave_data done!!");
 }
 

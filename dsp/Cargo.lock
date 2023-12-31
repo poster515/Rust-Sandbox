@@ -19,6 +19,7 @@ dependencies = [
 name = "dsp"
 version = "0.1.0"
 dependencies = [
+ "bb_processor",
  "generator",
  "num-complex 0.4.4",
  "processors",

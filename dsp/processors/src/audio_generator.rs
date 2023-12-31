@@ -2,16 +2,13 @@
 use std::thread;
 use std::sync::{Arc, Mutex, Condvar};
 
-use num_complex::Complex;
-
-
-use bb_processor::{BasicBufferProcessor, ReturnPair, BufferTrait};
+use bb_processor::{BasicBufferProcessor, ReturnPair, DspBuffer, DspChannels, BufferTrait};
 use generator::*;
 
 pub trait DspPathMember {
     fn init(&mut self) -> ();
     fn run(&mut self, clk: Arc<Mutex<i8>>, period: i64) -> ();
-    fn get_my_vec_ref(&self) -> Arc<Mutex<Vec<Vec<Complex<f64>>>>>;
+    fn get_my_vec_ref(&self) -> DspChannels;
     fn get_cond_var_ptr(&self) -> ReturnPair;
 }
 
@@ -20,10 +17,10 @@ pub struct AudioGenerator {
 }
 
 impl AudioGenerator {
-    pub fn new(buffer_len: usize, pab: Arc<Mutex<bool>>, pcv: Arc<Condvar>) -> AudioGenerator {
+    pub fn new(buffer_len: usize, pab: Arc<Mutex<bool>>, pcv: Arc<Condvar>, pb: DspChannels) -> AudioGenerator {
 
         AudioGenerator {
-            buffer: BasicBufferProcessor::new(buffer_len, pab, pcv)
+            buffer: BasicBufferProcessor::new(buffer_len, pab, pcv, pb, "AudioGenerator".to_owned())
         }
     }
 }
@@ -34,11 +31,10 @@ impl DspPathMember for AudioGenerator {
         // just make new vectors for each channel
         let binding = self.buffer.get_my_vec_ref();
         let mut buffer = binding.lock().unwrap();
-        for _ in 0..3 {
-            (*buffer).push(Vec::new());
+        for i in 0..4 {
+            println!("AudioGenerator creating buffer #{}...", i);
+            (*buffer).push(Arc::new(Mutex::new(Vec::new())));
         }
-
-        assert_eq!(self.buffer.get_my_vec_ref().lock().unwrap().len(), 4);
     }
 
     fn run(&mut self, clock: Arc<Mutex<i8>>, period: i64) -> () {
@@ -50,35 +46,49 @@ impl DspPathMember for AudioGenerator {
         self.buffer.wait_for_start();
 
         // spin up threads for each channel and populate
-        let func_vec = vec![
-                generate_square_wave_data,
-                generate_sine_wave_data,
-                generate_triangle_wave_data,
-                generate_sawtooth_wave_data];
+        let func_vec: Vec<&(dyn Fn(DspBuffer
+            , usize
+            , Arc<Mutex<i8>>
+            , i64) -> () + Send)> = vec![
+                &generate_square_wave_data,
+                &generate_sine_wave_data,
+                &generate_triangle_wave_data,
+                &generate_sawtooth_wave_data];
 
         let mut thread_handles: Vec<thread::JoinHandle<()>> = Vec::new();
 
-        let binding = self.buffer.get_my_vec_ref();
-        let buffer = binding.lock().unwrap();
+        let binding: DspChannels = self.buffer.get_my_vec_ref();
         let buffer_len =  self.buffer.get_fill_length();
 
-        for (index, func) in func_vec.iter().enumerate() {
-            println!("Running function number: {index:}")
-            // let v: Option<&mut Vec<Complex<f64>>> = (*buffer).get_mut(index);
-            // match v {
-            //     None => panic!("Could not locate vector!"),
-            //     Some(vec) => {
-            //         let clk = Arc::clone(&clock);
-            //         let per = period;
+        for (index, func) in func_vec.into_iter().enumerate() {
 
-            //         thread_handles.push(
-            //             thread::spawn(move || {
-            //                     func(vec, buffer_len, clk, per);
-            //                 }
-            //             )
-            //         );
-            //     }
-            // };
+            // println!("Running function number: {index:}")
+            let buffer = binding.lock().unwrap();
+            let v: Option<&DspBuffer> = (*buffer).get(index);
+            match v {
+                None => panic!("Could not locate vector!"),
+                Some(vec) => {
+                    let clk = Arc::clone(&clock);
+                    let per = period;
+                    let vec_clone = Arc::clone(&vec);
+
+                    // TODO: actually call functions in func_vec
+                    thread_handles.push(
+                        thread::spawn(move || {
+                            generate_square_wave_data(vec_clone, buffer_len, clk, per);
+                        })
+                    );
+
+                    // let func = func_vec.get(index).unwrap();
+                    // let func_copy = &func;
+                    // thread_handles.push(
+                    //     thread::spawn(move || {
+                    //             func(vec_clone, buffer_len, clk, per)
+                    //         }
+                    //     )
+                    // );
+                }
+            };
         }
 
         // join all threads
@@ -90,7 +100,7 @@ impl DspPathMember for AudioGenerator {
         self.buffer.end_of_processing();
     }
 
-    fn get_my_vec_ref(&self) -> Arc<Mutex<Vec<Vec<Complex<f64>>>>> {
+    fn get_my_vec_ref(&self) -> DspChannels {
         self.buffer.get_my_vec_ref()
     }
 
