@@ -4,9 +4,9 @@ use std::f64::consts::PI;
 
 use std::sync::{Arc, Mutex};
 
-type DspBuffer = Arc<Mutex<Vec<Complex<f64>>>>;
+use bb_processor::*;
 
-pub fn generate_square_wave_data(vec: DspBuffer
+pub fn generate_square_wave_data(vec: DataBuffer
 		, buffer_len: usize
 		, clock: Arc<Mutex<i8>>
 		, period: i64){
@@ -40,7 +40,7 @@ pub fn generate_square_wave_data(vec: DspBuffer
 	println!("generate_square_wave_data done!!");
 }
 
-pub fn generate_sine_wave_data(vec: DspBuffer
+pub fn generate_sine_wave_data(vec: DataBuffer
 		, buffer_len: usize
 		, clock: Arc<Mutex<i8>>
 		, period: i64){
@@ -68,7 +68,7 @@ pub fn generate_sine_wave_data(vec: DspBuffer
 	println!("generate_sine_wave_data done!!");
 }
 
-pub fn generate_triangle_wave_data(vec: DspBuffer
+pub fn generate_triangle_wave_data(vec: DataBuffer
 		, buffer_len: usize
 		, clock: Arc<Mutex<i8>>
 		, period: i64){
@@ -99,7 +99,7 @@ pub fn generate_triangle_wave_data(vec: DspBuffer
 	println!("generate_triangle_wave_data done!!");
 }
 
-pub fn generate_sawtooth_wave_data(vec: DspBuffer
+pub fn generate_sawtooth_wave_data(vec: DataBuffer
 		, buffer_len: usize
 		, clock: Arc<Mutex<i8>>
 		, period: i64){

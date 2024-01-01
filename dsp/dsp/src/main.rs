@@ -3,13 +3,13 @@ use std::sync::{Arc, Mutex, Condvar};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{thread, time};
 
-use bb_processor::DspChannels;
+use bb_processor::{HalfPipe, DataBuffer};
 use processors::{AudioGenerator, DspPathMember};
 
 #[allow(unused_variables)]
 #[allow(unused_mut)]
 fn main() {
-    let mut vector: DspChannels = Default::default();
+    let mut vector: Vec<HalfPipe> = Default::default();
     let buffer_len: usize = 8;
     let period: i64 = 4;
 
@@ -18,9 +18,6 @@ fn main() {
     
     let buff_len_copy = buffer_len;
     let clk_ref = Arc::clone(&clock);
-
-    let main_start_flag: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
-    let main_cond_var: Arc<Condvar> = Arc::new(Condvar::new());
 
     let mut dsp_comps_spawned: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
     let dsp_wait = Arc::clone(&dsp_comps_spawned);
@@ -45,21 +42,26 @@ fn main() {
 		};
         println!("main() clock thread done!!");
     });
+    // create dummy halfpipes
+    for i in 0..4 {
+        let dummy_data: DataBuffer = Arc::new(Mutex::new(Vec::new()));
+        let i_bool = Arc::new(Mutex::new(false));
+        let i_cv = Arc::new(Condvar::new());
+        vector.push(HalfPipe::new(dummy_data, i_bool, i_cv))
+    }
+    let mut audio_generator: AudioGenerator = AudioGenerator::new(buffer_len, &vector);
 
-    let mut audio_generator: AudioGenerator = AudioGenerator::new(buffer_len, 
-        Arc::clone(&main_start_flag), 
-        Arc::clone(&main_cond_var), 
-        vector,
-    );
     thread_handles.push(thread::spawn(move || {
         audio_generator.run(Arc::clone(&clock), period);
     })); 
     
     // let AG know it can start waiting on clock
-    (*main_start_flag.lock().unwrap()) = true;
-    (*main_cond_var).notify_one();
+    for i in 0..4 {
+        *vector[i].data_ready.lock().unwrap() = true;
+        vector[i].cond_var.notify_all();
+    }
 
-    // now
+    // now start the clock
     dsp_comps_spawned.store(true, Ordering::SeqCst);
     clk_thread.join().unwrap();
 

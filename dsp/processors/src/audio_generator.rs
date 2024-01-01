@@ -1,15 +1,14 @@
 
 use std::thread;
-use std::sync::{Arc, Mutex, Condvar};
+use std::sync::{Arc, Mutex};
 
-use bb_processor::{BasicBufferProcessor, ReturnPair, DspBuffer, DspChannels, BufferTrait};
-use generator::*;
+mod generators;
+
+use bb_processor::*;
+use generators::*;
 
 pub trait DspPathMember {
-    fn init(&mut self) -> ();
     fn run(&mut self, clk: Arc<Mutex<i8>>, period: i64) -> ();
-    fn get_my_vec_ref(&self) -> DspChannels;
-    fn get_cond_var_ptr(&self) -> ReturnPair;
 }
 
 pub struct AudioGenerator {
@@ -17,36 +16,23 @@ pub struct AudioGenerator {
 }
 
 impl AudioGenerator {
-    pub fn new(buffer_len: usize, pab: Arc<Mutex<bool>>, pcv: Arc<Condvar>, pb: DspChannels) -> AudioGenerator {
-
-        AudioGenerator {
-            buffer: BasicBufferProcessor::new(buffer_len, pab, pcv, pb, "AudioGenerator".to_owned())
-        }
+    pub fn new(buffer_len: usize, inputs: &Vec<HalfPipe>) -> AudioGenerator {
+        let mut ag = AudioGenerator {
+            buffer: BasicBufferProcessor::new(buffer_len, "AudioGenerator".to_owned())
+        };
+        // populate the output vectors
+        ag.buffer.populate(inputs);
+        ag
     }
 }
 
 #[allow(unused_variables)]
 impl DspPathMember for AudioGenerator {
-    fn init(&mut self) -> () {
-        // just make new vectors for each channel
-        let binding = self.buffer.get_my_vec_ref();
-        let mut buffer = binding.lock().unwrap();
-        for i in 0..4 {
-            println!("AudioGenerator creating buffer #{}...", i);
-            (*buffer).push(Arc::new(Mutex::new(Vec::new())));
-        }
-    }
 
     fn run(&mut self, clock: Arc<Mutex<i8>>, period: i64) -> () {
 
-        // create new buffer for each channel
-        self.init();
-
-        // wait for start signal
-        self.buffer.wait_for_start();
-
         // spin up threads for each channel and populate
-        let func_vec: Vec<&(dyn Fn(DspBuffer
+        let func_vec: Vec<&(dyn Fn(DataBuffer
             , usize
             , Arc<Mutex<i8>>
             , i64) -> () + Send)> = vec![
@@ -57,25 +43,28 @@ impl DspPathMember for AudioGenerator {
 
         let mut thread_handles: Vec<thread::JoinHandle<()>> = Vec::new();
 
-        let binding: DspChannels = self.buffer.get_my_vec_ref();
+        let binding: DspChannels = self.buffer.get_channels();
         let buffer_len =  self.buffer.get_fill_length();
 
         for (index, func) in func_vec.into_iter().enumerate() {
 
             // println!("Running function number: {index:}")
-            let buffer = binding.lock().unwrap();
-            let v: Option<&DspBuffer> = (*buffer).get(index);
-            match v {
-                None => panic!("Could not locate vector!"),
-                Some(vec) => {
+            let data_pipes = binding.lock().unwrap();
+            let data_pipe = (*data_pipes).get(index);
+
+            match data_pipe {
+                None => panic!("Could not locate output vector!"),
+                Some(dp) => {
+                
                     let clk = Arc::clone(&clock);
                     let per = period;
-                    let vec_clone = Arc::clone(&vec);
+                    let mut data_pipe_clone: DataPipe = dp.clone();
 
-                    // TODO: actually call functions in func_vec
                     thread_handles.push(
                         thread::spawn(move || {
-                            generate_square_wave_data(vec_clone, buffer_len, clk, per);
+                            data_pipe_clone.wait_for_start();
+                            generate_square_wave_data(data_pipe_clone.get_output_data_vec(), buffer_len, clk, per);
+                            data_pipe_clone.end_of_processing();
                         })
                     );
 
@@ -96,15 +85,5 @@ impl DspPathMember for AudioGenerator {
             let cur_thread = thread_handles.remove(0); 
             cur_thread.join().unwrap();
         }
-
-        self.buffer.end_of_processing();
-    }
-
-    fn get_my_vec_ref(&self) -> DspChannels {
-        self.buffer.get_my_vec_ref()
-    }
-
-    fn get_cond_var_ptr(&self) -> ReturnPair {
-        self.buffer.get_cond_var_ptr()
     }
 }
