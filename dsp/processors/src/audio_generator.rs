@@ -7,9 +7,6 @@ mod generators;
 use bb_processor::*;
 use generators::*;
 
-pub trait DspPathMember {
-    fn run(&mut self, clk: Arc<Mutex<i8>>, period: i64) -> ();
-}
 
 pub struct AudioGenerator {
     buffer: BasicBufferProcessor
@@ -17,12 +14,9 @@ pub struct AudioGenerator {
 
 impl AudioGenerator {
     pub fn new(buffer_len: usize, inputs: &Vec<HalfPipe>) -> AudioGenerator {
-        let mut ag = AudioGenerator {
-            buffer: BasicBufferProcessor::new(buffer_len, "AudioGenerator".to_owned())
-        };
-        // populate the output vectors
-        ag.buffer.populate(inputs);
-        ag
+        AudioGenerator {
+            buffer: BasicBufferProcessor::new(buffer_len, inputs, 0.0, "AudioGenerator".to_owned())
+        }
     }
 }
 
@@ -85,5 +79,9 @@ impl DspPathMember for AudioGenerator {
             let cur_thread = thread_handles.remove(0); 
             cur_thread.join().unwrap();
         }
+    }
+
+    fn get_output_halfpipes(&self) -> Vec<HalfPipe> {
+        self.buffer.get_output_halfpipes()
     }
 }

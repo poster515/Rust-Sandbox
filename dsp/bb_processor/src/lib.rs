@@ -7,7 +7,6 @@ use num_complex::Complex;
 pub type ReturnPair = (Arc<Mutex<bool>>, Arc<Condvar>);
 pub type DataBuffer = Arc<Mutex<Vec<Complex<f64>>>>;
 pub type DspBufferVector = Arc<Mutex<Vec<DataBuffer>>>;
-pub type OutputHalfpipes = Arc<Mutex<Vec<HalfPipe>>>;
 
 
 #[derive(Default)]
@@ -54,9 +53,9 @@ pub trait WrapperTraits {
 }
 
 pub struct DataPipe {
-    input: HalfPipe,
-    output: HalfPipe,
-    channel: usize
+    pub input: HalfPipe,
+    pub output: HalfPipe,
+    pub channel: usize
 }
 
 impl WrapperTraits for DataPipe {
@@ -118,11 +117,15 @@ impl WrapperTraits for DataPipe {
 pub type DspChannels = Arc<Mutex<Vec<DataPipe>>>;
 
 pub trait BufferTrait {
+    fn new(fill_size: usize, inputs: &Vec<HalfPipe>, default: f64, name: String) -> BasicBufferProcessor;
     fn get_input_vectors(&self) -> Vec<DataBuffer>;
     fn get_output_vectors(&self) -> Vec<DataBuffer>;
     fn get_fill_length(&self) -> usize;
-    fn get_output_halfpipes(&self) -> OutputHalfpipes;
+    fn get_output_halfpipes(&self) -> Vec<HalfPipe>;
     fn get_channels(&self) -> DspChannels;
+    fn get_num_channels(&self) -> usize;
+    fn create_pipes(&mut self, inputs: &Vec<HalfPipe>) -> ();
+    fn populate_data(&mut self, val: f64) -> ();
 }
 
 // basic struct that will house common components
@@ -131,28 +134,6 @@ pub struct BasicBufferProcessor {
     channels: DspChannels,
     vector_fill_length: usize,
     name: String
-}
-
-impl BasicBufferProcessor {
-    pub fn new(fill_size: usize, name: String) -> BasicBufferProcessor {
-        BasicBufferProcessor {
-            channels: Arc::new(Mutex::new(Vec::new())),
-            vector_fill_length: fill_size,
-            name: name
-        }
-    }
-    pub fn populate(&mut self, inputs: &Vec<HalfPipe>) -> () {
-        let mut channels = self.channels.lock().unwrap();
-        for i in 0..inputs.len() {
-
-            (*channels).push(DataPipe::new(
-                Arc::clone(&inputs[i].data), 
-                Arc::clone(&inputs[i].data_ready), 
-                Arc::clone(&inputs[i].cond_var), 
-                i)
-            );
-        }
-    }
 }
 
 impl BufferTrait for BasicBufferProcessor {
@@ -180,12 +161,12 @@ impl BufferTrait for BasicBufferProcessor {
         self.vector_fill_length
     }
 
-    fn get_output_halfpipes(&self) -> OutputHalfpipes {
-        let outputs: OutputHalfpipes = Arc::new(Mutex::new(Vec::new()));
+    fn get_output_halfpipes(&self) -> Vec<HalfPipe> {
+        let mut outputs: Vec<HalfPipe> = Vec::new();
 
         let b = self.channels.lock().unwrap();
         for i in 0..b.len() {
-            outputs.lock().unwrap().push(b[i].get_output_halfpipe());
+            outputs.push(b[i].get_output_halfpipe());
         }
         outputs
     }
@@ -193,4 +174,53 @@ impl BufferTrait for BasicBufferProcessor {
     fn get_channels(&self) -> DspChannels {
         Arc::clone(&self.channels)
     }
+
+    fn get_num_channels(&self) -> usize {
+        self.channels.lock().unwrap().len()
+    }
+
+    fn new(fill_size: usize, inputs: &Vec<HalfPipe>, default: f64, name: String) -> BasicBufferProcessor {
+        let mut bb = BasicBufferProcessor {
+            channels: Arc::new(Mutex::new(Vec::new())),
+            vector_fill_length: fill_size,
+            name: name
+        };
+        bb.create_pipes(inputs);
+        bb.populate_data(default);
+        bb
+    }
+    
+    fn create_pipes(&mut self, inputs: &Vec<HalfPipe>) -> () {
+        let mut channels = self.channels.lock().unwrap();
+        for i in 0..inputs.len() {
+
+            (*channels).push(DataPipe::new(
+                Arc::clone(&inputs[i].data), 
+                Arc::clone(&inputs[i].data_ready), 
+                Arc::clone(&inputs[i].cond_var), 
+                i)
+            );
+        }
+    }
+
+    fn populate_data(&mut self, value: f64) -> () {
+        let channels = self.channels.lock().unwrap();
+        for i in 0..channels.len() {
+            let pipe = channels.get(i);
+            match pipe {
+                None => panic!("Could not locate output vector!"),
+                Some(data_pipe) => {
+                    for _ in 0..self.vector_fill_length {
+                        let val: Complex<f64> = Complex::new(value, value);
+                        data_pipe.output.data.lock().unwrap().push(val);
+                    }
+                }
+            };
+        }
+    }
+}
+
+pub trait DspPathMember {
+    fn run(&mut self, clk: Arc<Mutex<i8>>, period: i64) -> ();
+    fn get_output_halfpipes(&self) -> Vec<HalfPipe>;
 }

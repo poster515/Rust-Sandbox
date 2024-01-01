@@ -4,7 +4,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::{thread, time};
 
 use bb_processor::{HalfPipe, DataBuffer};
-use processors::{AudioGenerator, DspPathMember};
+use processors::{AudioGenerator, FFT};
+use bb_processor::DspPathMember;
 
 #[allow(unused_variables)]
 #[allow(unused_mut)]
@@ -50,10 +51,17 @@ fn main() {
         vector.push(HalfPipe::new(dummy_data, i_bool, i_cv))
     }
     let mut audio_generator: AudioGenerator = AudioGenerator::new(buffer_len, &vector);
+    let mut freq_transformer: FFT = FFT::new(buffer_len, &audio_generator.get_output_halfpipes());
 
+    let ag_clk = Arc::clone(&clock);
     thread_handles.push(thread::spawn(move || {
-        audio_generator.run(Arc::clone(&clock), period);
+        audio_generator.run(ag_clk, period);
     })); 
+
+    let fft_clk = Arc::clone(&clock);
+    thread_handles.push(thread::spawn(move || {
+        freq_transformer.run(fft_clk, period);
+    }));
     
     // let AG know it can start waiting on clock
     for i in 0..4 {

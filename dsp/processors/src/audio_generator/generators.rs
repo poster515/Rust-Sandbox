@@ -29,12 +29,11 @@ pub fn generate_square_wave_data(vec: DataBuffer
 			val = Complex::new(-1.0, 0.0);
 		}
 
-		v.push(val);
+		v[i] = val;
 
 		while temp_clock_value == 1 {
 			temp_clock_value = *clock.lock().unwrap();
 		}
-
 	}
 
 	println!("generate_square_wave_data done!!");
@@ -59,7 +58,7 @@ pub fn generate_sine_wave_data(vec: DataBuffer
 		}
 		// val = ((2.0 * PI * (i as f64 % period as f64)) / period as f64).sin();
 		val = Complex::new(((2.0 * PI * (i as f64 % period as f64) / period as f64)).sin(), 0.0);
-		v.push(val);
+		v[i] = val;
 
 		while temp_clock_value == 1 {
 			temp_clock_value = *clock.lock().unwrap();
@@ -90,7 +89,7 @@ pub fn generate_triangle_wave_data(vec: DataBuffer
 		} else {
 			val = Complex::new((3 - (4*(i as i64 % period))/period) as f64, 0.0);
 		}
-		v.push(val);
+		v[i] = val;
 
 		while temp_clock_value == 1 {
 			temp_clock_value = *clock.lock().unwrap();
@@ -118,7 +117,7 @@ pub fn generate_sawtooth_wave_data(vec: DataBuffer
 		}
 		
 		val = Complex::new((((2 * (i as i64 % period)) / period) - 1) as f64, 0.0);
-		v.push(val);
+		v[i] = val;
 
 		while temp_clock_value == 1 {
 			temp_clock_value = *clock.lock().unwrap();
