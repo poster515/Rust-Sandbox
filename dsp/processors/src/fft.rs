@@ -5,7 +5,7 @@ use num_complex::Complex;
 
 use bb_processor::*;
 
-fn perform_fft(pipe: &DataPipe){
+fn perform_fft(pipe: &DataPipe, period: i64){
     println!("Performing fft...");
     let i_vec: &mut Vec<Complex<f64>> = &mut pipe.input.data.lock().unwrap();
     let o_vec: &mut Vec<Complex<f64>> = &mut pipe.output.data.lock().unwrap();
@@ -15,7 +15,7 @@ fn perform_fft(pipe: &DataPipe){
         for j in 0..buffer_len {
             // i is for each f_i element
             // j is for going through each array element and weighting
-            let trig_arg: f64 = (2.0 * PI * (i as f64) * (j as f64)) / buffer_len as f64;
+            let trig_arg: f64 = (2.0 * PI * (i as f64) * (j as f64)) / period as f64;
 
             let real_product: f64 = i_vec[j].re * trig_arg.cos();
             let imag_product: f64 = i_vec[j].re * trig_arg.sin();
@@ -60,7 +60,7 @@ impl DspPathMember for FFT {
                     thread_handles.push(
                         thread::spawn(move || {
                             data_pipe_clone.wait_for_start();
-                            perform_fft(&data_pipe_clone);
+                            perform_fft(&data_pipe_clone, period);
                             data_pipe_clone.end_of_processing();
                         })
                     );
