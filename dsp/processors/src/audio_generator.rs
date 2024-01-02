@@ -26,7 +26,7 @@ impl DspPathMember for AudioGenerator {
     fn run(&mut self, clock: Arc<Mutex<i8>>, period: i64) -> () {
 
         // spin up threads for each channel and populate
-        let func_vec: Vec<&(dyn Fn(DataBuffer
+        let func_vec: Vec<&(dyn FnOnce(DataBuffer
             , usize
             , Arc<Mutex<i8>>
             , i64) -> () + Send)> = vec![
@@ -54,22 +54,33 @@ impl DspPathMember for AudioGenerator {
                     let per = period;
                     let mut data_pipe_clone: DataPipe = dp.clone();
 
-                    thread_handles.push(
-                        thread::spawn(move || {
+                    if index == 0 {
+                        thread_handles.push(thread::spawn(move || {
                             data_pipe_clone.wait_for_start();
                             generate_square_wave_data(data_pipe_clone.get_output_data_vec(), buffer_len, clk, per);
                             data_pipe_clone.end_of_processing();
-                        })
-                    );
-
-                    // let func = func_vec.get(index).unwrap();
-                    // let func_copy = &func;
-                    // thread_handles.push(
-                    //     thread::spawn(move || {
-                    //             func(vec_clone, buffer_len, clk, per)
-                    //         }
-                    //     )
-                    // );
+                        }));
+                    } else if index == 1 {
+                        thread_handles.push(thread::spawn(move || {
+                            data_pipe_clone.wait_for_start();
+                            generate_sine_wave_data(data_pipe_clone.get_output_data_vec(), buffer_len, clk, per);
+                            data_pipe_clone.end_of_processing();
+                        }));
+                    } else if index == 2 {
+                        thread_handles.push(thread::spawn(move || {
+                            data_pipe_clone.wait_for_start();
+                            generate_triangle_wave_data(data_pipe_clone.get_output_data_vec(), buffer_len, clk, per);
+                            data_pipe_clone.end_of_processing();
+                        }));
+                    } else if index == 3 {
+                        thread_handles.push(thread::spawn(move || {
+                            data_pipe_clone.wait_for_start();
+                            generate_sawtooth_wave_data(data_pipe_clone.get_output_data_vec(), buffer_len, clk, per);
+                            data_pipe_clone.end_of_processing();
+                        }));
+                    } else {
+                        println!("Ignoring call for index");
+                    }
                 }
             };
         }
@@ -79,6 +90,8 @@ impl DspPathMember for AudioGenerator {
             let cur_thread = thread_handles.remove(0); 
             cur_thread.join().unwrap();
         }
+
+        self.buffer.write_to_file();
     }
 
     fn get_output_halfpipes(&self) -> Vec<HalfPipe> {

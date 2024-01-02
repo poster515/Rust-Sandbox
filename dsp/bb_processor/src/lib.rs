@@ -1,5 +1,6 @@
 
-
+use std::fs::File;
+use std::io::Write;
 use std::sync::{Arc, Mutex, Condvar};
 
 use num_complex::Complex;
@@ -126,6 +127,7 @@ pub trait BufferTrait {
     fn get_num_channels(&self) -> usize;
     fn create_pipes(&mut self, inputs: &Vec<HalfPipe>) -> ();
     fn populate_data(&mut self, val: f64) -> ();
+    fn write_to_file(&self) -> ();
 }
 
 // basic struct that will house common components
@@ -216,6 +218,30 @@ impl BufferTrait for BasicBufferProcessor {
                     }
                 }
             };
+        }
+    }
+
+    fn write_to_file(&self) -> () {
+        let binding: DspChannels = self.get_channels();
+        let data_pipes = binding.lock().unwrap();
+
+        let filename: String = format!("{}.csv", self.name);
+        let mut f = File::create(&filename).expect(&format!("Unable to create file {}!", filename));
+
+        for i in 0..self.get_fill_length() {            
+            let mut row_str: String = String::new();
+
+            for j in 0..data_pipes.len() {
+
+                let data_pipe = (*data_pipes).get(j).unwrap();
+                let data_vec = data_pipe.get_output_data_vec();
+
+                row_str += &(*data_vec.lock().unwrap())[i].re.to_string();
+                row_str += ",";
+            }
+
+            row_str += "\n";
+            write!(f, "{}", row_str).expect(&format!("Could not write to file {}!", filename));
         }
     }
 }

@@ -81,6 +81,8 @@ impl DspPathMember for Filter {
             let cur_thread = thread_handles.remove(0); 
             cur_thread.join().unwrap();
         }
+
+        self.buffer.write_to_file();
     }
 
     fn get_output_halfpipes(&self) -> Vec<HalfPipe> {

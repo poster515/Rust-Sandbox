@@ -4,15 +4,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::{thread, time};
 
 use bb_processor::{HalfPipe, DataBuffer};
-use processors::{AudioGenerator, FFT, Filter};
+use processors::{AudioGenerator, FFT, Filter, IFFT};
 use bb_processor::DspPathMember;
 
 #[allow(unused_variables)]
 #[allow(unused_mut)]
 fn main() {
     let mut vector: Vec<HalfPipe> = Default::default();
-    let buffer_len: usize = 8;
-    let period: i64 = 4;
+    let buffer_len: usize = 128;
+    let period: i64 = 64;
 
     // clock used to tick throughout the other generator threads
     let clock = Arc::new(Mutex::new(0 as i8));
@@ -35,7 +35,7 @@ fn main() {
         println!("main() clock thread got start signal!! running...");
         // then run the clock - two transitions for each element in buffer
         for _ in 0..(2 * buff_len_copy) {
-            let ten_millis = time::Duration::from_millis(100);
+            let ten_millis = time::Duration::from_millis(10);
             thread::sleep(ten_millis);
             
             let mut value_guard = clk_ref.lock().unwrap();
@@ -53,6 +53,7 @@ fn main() {
     let mut audio_generator: AudioGenerator = AudioGenerator::new(buffer_len, &vector);
     let mut freq_transformer: FFT = FFT::new(buffer_len, &audio_generator.get_output_halfpipes());
     let mut freq_filter: Filter = Filter::new(buffer_len, &freq_transformer.get_output_halfpipes());
+    let mut time_transformer: IFFT = IFFT::new(buffer_len, &freq_filter.get_output_halfpipes());
 
     let ag_clk = Arc::clone(&clock);
     thread_handles.push(thread::spawn(move || {
@@ -67,6 +68,11 @@ fn main() {
     let filter_clk = Arc::clone(&clock);
     thread_handles.push(thread::spawn(move || {
         freq_filter.run(filter_clk, period);
+    }));
+
+    let ifft_clk = Arc::clone(&clock);
+    thread_handles.push(thread::spawn(move || {
+        time_transformer.run(ifft_clk, period);
     }));
     
     // let AG know it can start waiting on clock

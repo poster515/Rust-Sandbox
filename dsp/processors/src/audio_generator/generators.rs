@@ -85,9 +85,9 @@ pub fn generate_triangle_wave_data(vec: DataBuffer
 			temp_clock_value = *clock.lock().unwrap();
 		}
 		if (i as i64 % period) < (period/2){
-			val = Complex::new(((4*(i as i64 % period))/period - 1) as f64, 0.0);
+			val = Complex::new(((4.0*(i as f64 % period as f64))/period as f64 - 1.0) as f64, 0.0);
 		} else {
-			val = Complex::new((3 - (4*(i as i64 % period))/period) as f64, 0.0);
+			val = Complex::new((3.0 - (4.0*(i as f64 % period as f64))/period as f64) as f64, 0.0);
 		}
 		v[i] = val;
 
@@ -116,7 +116,7 @@ pub fn generate_sawtooth_wave_data(vec: DataBuffer
 			temp_clock_value = *clock.lock().unwrap();
 		}
 		
-		val = Complex::new((((2 * (i as i64 % period)) / period) - 1) as f64, 0.0);
+		val = Complex::new((((2.0 * (i as f64 % period as f64)) / period as f64) - 1.0) as f64, 0.0);
 		v[i] = val;
 
 		while temp_clock_value == 1 {
